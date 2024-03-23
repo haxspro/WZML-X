@@ -247,12 +247,16 @@ async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=No
                     link = (link, (ussr, pssw))
                 link = await sync_to_async(direct_link_generator, link)
                 if isinstance(link, tuple):
-                    link, headers = link
+                    link, headers, name = link
                 elif isinstance(link, str):
                     LOGGER.info(f"Generated link: {link}")
                     await editMessage(process_msg, f"<i><b>Generated link:</b></i> <code>{link}</code>")
             except DirectDownloadLinkException as e:
                 e = str(e)
+                if e:
+                    await editMessage(process_msg, e)
+                    await delete_links(message)
+                    return
                 if 'This link requires a password!' not in e:
                     LOGGER.info(e)
                 if str(e).startswith('ERROR:'):
@@ -260,6 +264,7 @@ async def _mirror_leech(client, message, isQbit=False, isLeech=False, sameDir=No
                     await delete_links(message)
                     return
             await deleteMessage(process_msg)
+
 
     if not isLeech:
         if config_dict['DEFAULT_UPLOAD'] == 'rc' and not up or up == 'rc':

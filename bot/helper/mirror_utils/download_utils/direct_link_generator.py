@@ -160,9 +160,9 @@ def direct_link_generator(link):
         return easyupload(link)
     elif 'streamvid.net' in domain:
         return streamvid(link)
-    elif any(x in domain for x in ['dood.watch', 'doodstream.com', 'dood.to', 'dood.so', 'dood.cx', 'dood.la', 'dood.ws', 'dood.sh', 'doodstream.co', 'dood.pm', 'dood.wf', 'dood.re', 'dood.video', 'dooood.com', 'dood.yt', 'doods.yt', 'dood.stream', 'doods.pro']):
+    elif any(x in domain for x in ['dood.watch', 'doodstream.com', 'dood.to', 'dood.so', 'dood.cx', 'dood.la', 'dood.ws', 'dood.sh', 'doodstream.co', 'dood.pm', 'dood.wf', 'dood.re', 'dood.video', 'dooood.com', 'dood.yt', 'doods.yt', 'dood.stream', 'doods.pro', 'ds2play.com', 'dood.boo', 'dood.zip', 'poop.media', 'doods.boo', 'doodx.pro', 'tem.pics', 'poop.cx', 'ds2video', 'd0o0d.com', 'poops.pink', 'doodf.com', 'poop.kim', 'poop.vin','do0od.com', 'do0d.com', 'doood.cam', 'd000d.com', 'd0000d.com']):
         return doods(link)
-    elif any(x in domain for x in ['streamtape.com', 'streamtape.co', 'streamtape.cc', 'streamtape.to', 'streamtape.net', 'streamta.pe', 'streamtape.xyz']):
+    elif any(x in domain for x in ['streamtape.com', 'streamtape.co', 'streamtape.cc', 'streamtape.to', 'streamtape.net', 'streamta.pe', 'streamtape.xyz', 'streamnoads.com', 'tapenoads.com', 'tapeadsenjoyer.com', 'gettapeads.com']):
         return streamtape(link)
     elif any(x in domain for x in ['wetransfer.com', 'we.tl']):
         return wetransfer(link)
@@ -1137,26 +1137,32 @@ def mediafireFolder(url):
 
 
 def doods(url):
-    if "/e/" in url:
-        url = url.replace("/e/", "/d/")
-    parsed_url = urlparse(url)
     with create_scraper() as session:
         try:
-            html = HTML(session.get(url).text)
+            req = session.get(f"https://api.pakai.eu.org/dood?url={url}")
+            req.raise_for_status()  # Raises HTTPError for bad responses
+
+            jresp = req.json()
+            success = jresp.get("success", False)
+            if not success:
+                raise DirectDownloadLinkException(jresp.get("message"))
+
+            data = jresp.get("data")
+            LOGGER.info(data)
+            folder = jresp.get("folder")
+            if data:
+                if folder:
+                    origin_links = [f"<code>{item['origin']}</code>" for item in data]
+                    raise DirectDownloadLinkException("\n".join(origin_links))
+                else:
+                    # Handle the non-folder response as before
+                    name = data.get("title")
+                    referer = data.get("referer")
+                    link = data.get("direct_link")
+                    return (link, f'Referer: {referer}', name)
         except Exception as e:
-            raise DirectDownloadLinkException(f'ERROR: {e.__class__.__name__} While fetching token link') from e
-        if not (link := html.xpath("//div[@class='download-content']//a/@href")):
-            raise DirectDownloadLinkException('ERROR: Token Link not found or maybe not allow to download! open in browser.')
-        link = f'{parsed_url.scheme}://{parsed_url.hostname}{link[0]}'
-        sleep(2)
-        try:
-            _res = session.get(link)
-        except Exception as e:
-            raise DirectDownloadLinkException(
-                f'ERROR: {e.__class__.__name__} While fetching download link') from e
-    if not (link := search(r"window\.open\('(\S+)'", _res.text)):
-        raise DirectDownloadLinkException("ERROR: Download link not found try again")
-    return (link.group(1), f'Referer: {parsed_url.scheme}://{parsed_url.hostname}/')
+            raise DirectDownloadLinkException(f"{e}")
+
 
 def easyupload(url):
     if "::" in url:
